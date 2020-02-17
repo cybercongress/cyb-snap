@@ -1,0 +1,202 @@
+<!doctype html>
+
+<html>
+
+  </head>
+    <title>cyb-virus Snap</title>
+  </head>
+
+  <body>
+    <h1>cyb-virus snap PoC</h1>
+    <details>
+      <summary>Features</summary>
+      <ul>
+        <li>1. Get your account info </li>
+        <li>2. Get your bandwidth </li>
+        <li>2. Get network status </li>
+        <li>3. Create cyberlink </li>
+        <li>4. Send tokens </li>
+      </ul>
+    </details>
+    <br/>
+
+    <button class="connect">Connect</button>
+    <p>
+      <button class="account">Get Account</button>
+      <span class="addAccount"></span>
+    </p>
+
+    <p>
+      <button class="accountInfo">Get Account Info</button>
+      <span class="addAccountInfo"></span>
+    </p>
+
+    <p>
+      <button class="status">Get Status</button>
+      <span class="addStatus"></span>
+    </p>
+
+    <p>
+      <button class="bandwidth">Get Bandwidth</button>
+      <span class="addBandwidth"></span>
+    </p>
+
+    <p>
+      <input class="object_from" placeholder="from" />
+      <input class="object_to" placeholder="to" />
+      <button class="cyberlink">Create cyberlink!</button>
+      <span class="addCyberlink"></span>
+    </p>
+
+    <p>
+      <input class="subject_to" placeholder="to" />
+      <input class="amount" placeholder="amount" />
+      <button class="send">Create send!</button>
+      <span class="addSend"></span>
+    </p>
+   
+  </body>
+
+  <script>
+
+    const snapId = new URL('package.json', window.location.href).toString()
+
+    const connectButton = document.querySelector('button.connect')
+
+    const addAccount = document.querySelector('span.addAccount')
+    const accountButton = document.querySelector('button.account')
+    
+    const addAccountInfo = document.querySelector('span.addAccountInfo')
+    const accountInfoButton = document.querySelector('button.accountInfo')
+
+    const addStatus = document.querySelector('span.addStatus')
+    const statusButton = document.querySelector('button.status')
+
+    const addBandwidth = document.querySelector('span.addBandwidth')
+    const bandwidthButton = document.querySelector('button.bandwidth')
+
+    const addCyberlink = document.querySelector('span.addCyberlink')
+    const cyberlinkButton = document.querySelector('button.cyberlink')
+
+    const addSend = document.querySelector('span.addSend')
+    const sendButton = document.querySelector('button.send')
+
+    connectButton.addEventListener('click', connect)
+    accountButton.addEventListener('click', getAccount)
+    accountInfoButton.addEventListener('click', getAccountInfo)
+    statusButton.addEventListener('click', getStatus)
+    bandwidthButton.addEventListener('click', getBandwidth)
+    cyberlinkButton.addEventListener('click', createCyberlink)
+    sendButton.addEventListener('click', createSend)
+
+    async function connect () {
+      await ethereum.send({
+        method: 'wallet_enable',
+        params: [{
+          wallet_plugin: { [snapId]: {} },
+        }]
+      })
+    }
+
+    async function getAccount () {
+      try {
+        const response = await ethereum.send({
+          method: 'wallet_invokePlugin',
+          params: [snapId, {
+            method: 'getAccount'
+          }]
+        })
+        addAccount.innerText = JSON.stringify(response)
+        console.log("getAccount: ", JSON.stringify(response))
+      } catch (err) {
+        console.error(err)
+        addAccount.innerText = `Problem happened: ' ${JSON.stringify(err)}`
+      }
+    }
+
+    async function getAccountInfo () {
+      try {
+        const response = await ethereum.send({
+          method: 'wallet_invokePlugin',
+          params: [snapId, {
+            method: 'getAccountInfo'
+          }]
+        })
+        addAccountInfo.innerText = JSON.stringify(response)
+      } catch (err) {
+        console.error(err)
+        addAccountInfo.innerText = `Problem happened: ' ${JSON.stringify(err)}`
+      }
+    }
+
+    async function getStatus () {
+      try {
+        const response = await ethereum.send({
+          method: 'wallet_invokePlugin',
+          params: [snapId, {
+            method: 'getStatus'
+          }]
+        })
+        addStatus.innerText = JSON.stringify(response)
+      } catch (err) {
+        console.error(err)
+        addStatus.innerText = `Problem happened: ' ${JSON.stringify(err)}`
+      }
+    }
+
+    async function getBandwidth () {
+      try {
+        const response = await ethereum.send({
+          method: 'wallet_invokePlugin',
+          params: [snapId, {
+            method: 'getBandwidth'
+          }]
+        })
+        addBandwidth.innerText = JSON.stringify(response)
+      } catch (err) {
+        console.error(err)
+        addBandwidth.innerText = `Problem happened: ' ${JSON.stringify(err)}`
+      }
+    }
+
+    async function createCyberlink () {
+      try {
+        let data = {}
+        data['objectFrom'] = document.querySelector('.object_from').value
+        data['objectTo'] = document.querySelector('.object_to').value
+        const response = await ethereum.send({
+          method: 'wallet_invokePlugin',
+          params: [snapId, {
+            method: 'createCyberlink',
+            params: [data],
+          }]
+        })
+        addCyberlink.innerText = JSON.stringify(response)
+      } catch (err) {
+        console.error(err)
+        addCyberlink.innerText = `Problem happened: ' ${JSON.stringify(err)}`
+      }
+    }
+
+    async function createSend () {
+      try {
+        let data = {}
+        data['subjectTo'] = document.querySelector('.subject_to').value
+        data['amount'] = document.querySelector('.amount').value
+        const response = await ethereum.send({
+          method: 'wallet_invokePlugin',
+          params: [snapId, {
+            method: 'createSend',
+            params: [data]
+          }]
+        })
+        addSend.innerText = JSON.stringify(response)
+      } catch (err) {
+        console.error(err)
+        addSend.innerText = `Problem happened: ' ${JSON.stringify(err)}`
+      }
+    }
+
+  </script>
+
+</html>
