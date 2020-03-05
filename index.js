@@ -45,7 +45,7 @@ wallet.registerRpcMessageHandler(async (_originString, requestObject) => {
       if (!approvedSend) {
         throw rpcErrors.eth.unauthorized()
       }
-      return await createSend(sendData['subjectTo'], sendData['amount'])
+      return await createSendTx(sendData['subjectTo'], sendData['amount'])
 
     default:
       throw rpcErrors.methodNotFound(requestObject)
@@ -175,6 +175,7 @@ async function getStatus() {
 
 //----------------------------------------------------------
 
+// TODO refactor to universal skeleton
 const createSkeletonCyber = (txContext, denom) => {
   if (typeof txContext === 'undefined') {
     throw new Error('undefined txContext');
@@ -218,7 +219,7 @@ function applyGasCyber(unsignedTx, gas, denom) {
   unsignedTx.value.fee = {
     amount: [
       {
-        amount: '0',
+        amount: '0', // TODO apply correct fee for cosmos
         denom: denom || DENOM_CYBER,
       },
     ],
@@ -227,6 +228,8 @@ function applyGasCyber(unsignedTx, gas, denom) {
 
   return unsignedTx;
 }
+
+//----------------------------------------------------------
 
 function createCyberlink(txContext, address, objectFrom, objectTo, memo) {
   const txSkeleton = createSkeletonCyber(txContext, DENOM_CYBER);
@@ -249,6 +252,164 @@ function createCyberlink(txContext, address, objectFrom, objectTo, memo) {
 
   return txSkeleton;
 }
+
+function createSend(txContext, recipient, amount, denom, memo) {
+  const txSkeleton = createSkeletonCyber(txContext, denom);
+
+  const txMsg = {
+    type: 'cosmos-sdk/MsgSend',
+    value: {
+      amount: [
+        {
+          amount: amount.toString(),
+          denom: denom,
+        },
+      ],
+      from_address: txContext.bech32,
+      to_address: recipient,
+    },
+  };
+
+  txSkeleton.value.msg = [txMsg];
+  txSkeleton.value.memo = memo || '';
+
+  return txSkeleton;
+}
+
+function createDelegate(txContext, validatorBech32, amount, denom, memo) {
+  const txSkeleton = createSkeletonCyber(txContext, denom);
+
+  const txMsg = {
+    type: 'cosmos-sdk/MsgDelegate',
+    value: {
+      amount: {
+        amount: amount.toString(),
+        denom: denom,
+      },
+      delegator_address: txContext.bech32,
+      validator_address: validatorBech32,
+    },
+  };
+
+  txSkeleton.value.msg = [txMsg];
+  txSkeleton.value.memo = memo || '';
+
+  return txSkeleton;
+}
+
+function createRedelegate(txContext, validatorSourceBech32, validatorDestBech32, amount, denom, memo) {
+  const txSkeleton = createSkeletonCyber(txContext, denom);
+
+  const txMsg = {
+    type: 'cosmos-sdk/MsgBeginRedelegate',
+    value: {
+      amount: {
+        amount: amount.toString(),
+        denom: denom,
+      },
+      delegator_address: txContext.bech32,
+      validator_dst_address: validatorDestBech32,
+      validator_src_address: validatorSourceBech32,
+    },
+  };
+
+  txSkeleton.value.msg = [txMsg];
+  txSkeleton.value.memo = memo || '';
+
+  return txSkeleton;
+}
+
+function createUndelegate(txContext, validatorBech32, amount, denom, memo) {
+  const txSkeleton = createSkeletonCyber(txContext, denom);
+
+  const txMsg = {
+    type: 'cosmos-sdk/MsgUndelegate',
+    value: {
+      amount: {
+        amount: amount.toString(),
+        denom: denom,
+      },
+      delegator_address: txContext.bech32,
+      validator_address: validatorBech32,
+    },
+  };
+
+  txSkeleton.value.msg = [txMsg];
+  txSkeleton.value.memo = memo || '';
+
+  return txSkeleton;
+}
+
+function createWithdrawDelegationReward(txContext, address, rewards, denom, memo) {
+  const txSkeleton = createSkeletonCyber(txContext, denom);
+  txSkeleton.value.msg = [];
+
+  Object.keys(rewards).forEach(key => {
+    txSkeleton.value.msg.push({
+      type: 'cosmos-sdk/MsgWithdrawDelegationReward',
+      value: {
+        delegator_address: address,
+        validator_address: rewards[key].validator_address,
+      },
+    });
+  });
+
+  txSkeleton.value.memo = memo || '';
+
+  return txSkeleton;
+}
+
+function createTextProposal(txContext, address, title, description, deposit, denom, memo) {
+  const txSkeleton = createSkeletonCyber(txContext, denom);
+
+  const txMsg = {
+    type: 'cosmos-sdk/MsgSubmitProposal',
+    value: {
+      content: {
+        type: 'cosmos-sdk/TextProposal',
+        value: {
+          description,
+          title,
+        },
+      },
+      initial_deposit: deposit,
+      proposer: address,
+    },
+  };
+
+  txSkeleton.value.msg = [txMsg];
+  txSkeleton.value.memo = memo || '';
+
+  return txSkeleton;
+}
+
+function createCommunityPool(txContext, address, title, description, recipient, deposit, amount, denom, memo) {
+  const txSkeleton = createSkeletonCyber(txContext, denom);
+
+  const txMsg = {
+    type: 'cosmos-sdk/MsgSubmitProposal',
+    value: {
+      content: {
+        type: 'cosmos-sdk/CommunityPoolSpendProposal',
+        value: {
+          amount,
+          description,
+          recipient,
+          title,
+        },
+      },
+      initial_deposit: deposit,
+      proposer: address,
+    },
+  };
+
+  txSkeleton.value.msg = [txMsg];
+  txSkeleton.value.memo = memo || '';
+
+  return txSkeleton;
+}
+
+//----------------------------------------------------------
 
 async function createCyberlinkTx (objectFrom, objectTo) {
   const pubKey = await getPubKey()
@@ -276,30 +437,7 @@ async function createCyberlinkTx (objectFrom, objectTo) {
   return await txSubmit(signedTx)
 };
 
-function createSendCyber(txContext, recipient, amount, denom, memo) {
-  const txSkeleton = createSkeletonCyber(txContext, denom);
-
-  const txMsg = {
-    type: 'cosmos-sdk/MsgSend',
-    value: {
-      amount: [
-        {
-          amount: amount.toString(),
-          denom,
-        },
-      ],
-      from_address: txContext.bech32,
-      to_address: recipient,
-    },
-  };
-
-  txSkeleton.value.msg = [txMsg];
-  txSkeleton.value.memo = memo || '';
-
-  return txSkeleton;
-}
-
-async function createSend(subjectTo, amount) {
+async function createSendTx(subjectTo, amount) {
   const pubKey = await getPubKey()
   const account = getAccount(pubKey)
   const accountInfo = await getAccountInfo(account)
@@ -313,7 +451,7 @@ async function createSend(subjectTo, amount) {
     pk: pubKey.toString('hex'),
   };
 
-  const tx = await createSendCyber(
+  const tx = await createSend(
     txContext,
     subjectTo,
     amount,
@@ -324,6 +462,8 @@ async function createSend(subjectTo, amount) {
   const signedTx = await sign(tx, txContext);
   return txSubmit(signedTx)
 };
+
+//----------------------------------------------------------
 
 async function txSubmit(signedTx) {
   const txBody = {
