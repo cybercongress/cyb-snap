@@ -5,7 +5,7 @@ const bech32 = require('bech32')
 const Sha256 = require('sha256');
 const RIPEMD160 = require('ripemd160');
 
-const CYBER_NODE_URL = "https://titan.cybernode.ai/"
+const CYBER_NODE_URL = "https://mars.cybernode.ai"
 const PREFIX = "cyber"
 const DENOM_CYBER = "eul"
 const MEMO = "sent from cyb-virus snap!"
@@ -28,29 +28,50 @@ wallet.registerRpcMessageHandler(async (_originString, requestObject) => {
       pubKey = await getPubKey()
       account = getAccount(pubKey)
       return await getAccountBandwidth(account)
+    case 'getIndexStats':
+      return await getIndexStats()
     case 'createCyberlink':
       pubKey = await getPubKey()
       account = await getAccount(pubKey)
       let linkData = requestObject.params[0]
-      const approvedLink = await promptUser(`Do you want to create cyberlink ${JSON.stringify(linkData)} and sign Tx with account ${account}?`)
-      if (!approvedLink) {
-        throw rpcErrors.eth.unauthorized()
-      }
       return await createCyberlinkTx(linkData['objectFrom'], linkData['objectTo'])
     case 'createSend':
       pubKey = await getPubKey()
       account = await getAccount(pubKey)
       let sendData = requestObject.params[0]
-      const approvedSend = await promptUser(`Do you want to create send ${JSON.stringify(sendData)} and sign Tx with account ${account}?`)
-      if (!approvedSend) {
-        throw rpcErrors.eth.unauthorized()
-      }
       return await createSendTx(sendData['subjectTo'], sendData['amount'])
+    case 'createDelegate':
+      pubKey = await getPubKey()
+      account = await getAccount(pubKey)
+      let delegateData = requestObject.params[0]
+      return await createDelegateTx(delegateData['validatorTo'], delegateData['amount'])
+    case 'createRedelegate':
+      pubKey = await getPubKey()
+      account = await getAccount(pubKey)
+      let redelegateData = requestObject.params[0]
+      return await createRedelegateTx(redelegateData['validatorFrom'], redelegateData['validatorTo'], redelegateData['amount'])
+    case 'createUndelegate':
+      pubKey = await getPubKey()
+      account = await getAccount(pubKey)
+      let undelegateData = requestObject.params[0]
+      return await createUndelegateTx(undelegateData['validatorFrom'], undelegateData['amount'])
+    case 'createTextProposal':
+      throw rpcErrors.methodNotFound(requestObject)
+    case 'createCommunityPoolSpend':
+      throw rpcErrors.methodNotFound(requestObject)
+    case 'createVotingDeposit':
+      throw rpcErrors.methodNotFound(requestObject)
+    case 'createApplyVote':
+      throw rpcErrors.methodNotFound(requestObject)
+    case 'createWithdrawDelegationReward':
+      throw rpcErrors.methodNotFound(requestObject)
 
     default:
       throw rpcErrors.methodNotFound(requestObject)
   }
 })
+
+//----------------------------------------------------------
 
 async function getPubKey () {
   const PRIV_KEY = await wallet.getAppKey()
@@ -62,23 +83,18 @@ function getAccount (pubkey) {
   return toBech32(PREFIX, address)
 }
 
-async function promptUser (message) {
-  const response = await wallet.send({ method: 'confirm', params: [message] })
-  return response
-}
-
-//----------------------------------------------------------
-
-function getAddress(publicKey) {
-  if (publicKey.length > 33) {
-      publicKey = publicKey.slice(5, publicKey.length);
+function getAddress(pubkey) {
+  if (pubkey.length > 33) {
+    pubkey = pubkey.slice(5, pubkey.length);
   }
-  const hmac = Sha256(publicKey);
+  const hmac = Sha256(pubkey);
   const b = Buffer.from(hexToBytes(hmac));
   const addr = new RIPEMD160().update(b);
 
   return addr.digest('hex').toUpperCase();
 }
+
+//----------------------------------------------------------
 
 function hexToBytes(hex) {
   const bytes = [];
@@ -103,7 +119,7 @@ async function getNetworkId() {
 
 async function getAccountInfo(address) {
   try {
-    const response = await fetch(`${CYBER_NODE_URL}/api/account?address="${address}"`, {
+    const response = await fetch(`${CYBER_NODE_URL}/dev_api/account?address="${address}"`, {
       method: 'GET',
       headers: {
         Accept: 'application/json',
@@ -134,7 +150,7 @@ async function getAccountBandwidth(address) {
     };
 
     const response = await fetch(
-      `${CYBER_NODE_URL}/api/account_bandwidth?address="${address}"`, {
+      `${CYBER_NODE_URL}/dev_api/account_bandwidth?address="${address}"`, {
         method: 'GET',
         headers: {
           Accept: 'application/json',
@@ -156,7 +172,7 @@ async function getAccountBandwidth(address) {
 
 async function getStatus() {
   try {
-    const response = await fetch(`${CYBER_NODE_URL}/api/status`, {
+    const response = await fetch(`${CYBER_NODE_URL}/dev_api/status`, {
       method: 'GET',
       headers: {
         Accept: 'application/json',
@@ -165,6 +181,24 @@ async function getStatus() {
     });
     const data = await response.json();
     if(!data.result.node_info) { throw error };
+
+    return data.result;
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+async function getIndexStats() {
+  try {
+    const response = await fetch(`${CYBER_NODE_URL}/dev_api/index_stats`, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+    });
+    const data = await response.json();
+    if(!data.result) { throw error };
 
     return data.result;
   } catch (error) {
@@ -227,6 +261,23 @@ function applyGasCyber(unsignedTx, gas, denom) {
   };
 
   return unsignedTx;
+}
+
+async function createTxContext() {
+  const pubKey = await getPubKey()
+  const account = getAccount(pubKey)
+  const accountInfo = await getAccountInfo(account)
+
+  const txContext = {
+    accountNumber: accountInfo.account_number,
+    chainId: accountInfo.chainId,
+    sequence: accountInfo.sequence,
+    bech32: account,
+    memo: MEMO,
+    pk: pubKey.toString('hex'),
+  };
+  
+  return txContext
 }
 
 //----------------------------------------------------------
@@ -308,8 +359,8 @@ function createRedelegate(txContext, validatorSourceBech32, validatorDestBech32,
         denom: denom,
       },
       delegator_address: txContext.bech32,
-      validator_dst_address: validatorDestBech32,
       validator_src_address: validatorSourceBech32,
+      validator_dst_address: validatorDestBech32,
     },
   };
 
@@ -412,18 +463,7 @@ function createCommunityPool(txContext, address, title, description, recipient, 
 //----------------------------------------------------------
 
 async function createCyberlinkTx (objectFrom, objectTo) {
-  const pubKey = await getPubKey()
-  const account = getAccount(pubKey)
-  const accountInfo = await getAccountInfo(account)
-
-  const txContext = {
-    accountNumber: accountInfo.account_number,
-    chainId: accountInfo.chainId,
-    sequence: accountInfo.sequence,
-    bech32: account,
-    memo: MEMO,
-    pk: pubKey.toString('hex'),
-  };
+  const txContext = await createTxContext()
 
   const tx = await createCyberlink(
     txContext,
@@ -438,18 +478,7 @@ async function createCyberlinkTx (objectFrom, objectTo) {
 };
 
 async function createSendTx(subjectTo, amount) {
-  const pubKey = await getPubKey()
-  const account = getAccount(pubKey)
-  const accountInfo = await getAccountInfo(account)
-
-  const txContext = {
-    accountNumber: accountInfo.account_number,
-    chainId: accountInfo.chainId,
-    sequence: accountInfo.sequence,
-    bech32: account,
-    memo: MEMO,
-    pk: pubKey.toString('hex'),
-  };
+  const txContext = await createTxContext()
 
   const tx = await createSend(
     txContext,
@@ -463,6 +492,55 @@ async function createSendTx(subjectTo, amount) {
   return txSubmit(signedTx)
 };
 
+async function createDelegateTx(validatorTo, amount) {
+  const txContext = await createTxContext()
+
+  const tx = await createDelegate(
+    txContext,
+    validatorTo,
+    amount,
+    DENOM_CYBER,
+    MEMO
+  );
+  
+  const signedTx = await sign(tx, txContext);
+  return txSubmit(signedTx)
+  // return signedTx
+};
+
+async function  createRedelegateTx(validatorFrom, validatorTo, amount) {
+  const txContext = await createTxContext()
+
+  const tx = await createRedelegate(
+    txContext,
+    validatorFrom,
+    validatorTo,
+    amount,
+    DENOM_CYBER,
+    MEMO
+  );
+  
+  const signedTx = await sign(tx, txContext);
+  return txSubmit(signedTx)
+  // return signedTx
+};
+
+async function createUndelegateTx(validatorFrom, amount) {
+  const txContext = await createTxContext()
+
+  const tx = await createUndelegate(
+    txContext,
+    validatorFrom,
+    amount,
+    DENOM_CYBER,
+    MEMO
+  );
+  
+  const signedTx = await sign(tx, txContext);
+  return txSubmit(signedTx)
+  // return signedTx
+};
+
 //----------------------------------------------------------
 
 async function txSubmit(signedTx) {
@@ -470,7 +548,7 @@ async function txSubmit(signedTx) {
     tx: signedTx.value,
     mode: 'sync',
   };
-  const url = `${CYBER_NODE_URL}/lcd/txs`;
+  const url = `${CYBER_NODE_URL}/dev_lcd/txs`;
   const response = await fetch(url, {
     method: 'POST',
     headers: {

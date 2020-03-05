@@ -42,6 +42,11 @@
     </p>
 
     <p>
+      <button class="indexStats">Get Index Stats</button>
+      <span class="addIndexStats"></span>
+    </p>
+
+    <p>
       <input class="object_from" placeholder="from" />
       <input class="object_to" placeholder="to" />
       <button class="cyberlink">Create cyberlink!</button>
@@ -50,9 +55,31 @@
 
     <p>
       <input class="subject_to" placeholder="to" />
-      <input class="amount" placeholder="amount" />
+      <input class="amount_send" placeholder="amount" />
       <button class="send">Create send!</button>
       <span class="addSend"></span>
+    </p>
+
+    <p>
+      <input class="validator_to" placeholder="to" />
+      <input class="amount_delegate" placeholder="amount" />
+      <button class="delegate">Delegate</button>
+      <span class="addDelegate"></span>
+    </p>
+
+    <p>
+      <input class="validator_from" placeholder="from" />
+      <input class="validator_to" placeholder="to" />
+      <input class="amount_redelegate" placeholder="amount" />
+      <button class="redelegate">Redelegate</button>
+      <span class="addRedelegate"></span>
+    </p>
+
+    <p>
+      <input class="validator_from" placeholder="from" />
+      <input class="amount_undelegate" placeholder="amount" />
+      <button class="undelegate">Undelegate</button>
+      <span class="addUndelegate"></span>
     </p>
    
   </body>
@@ -75,19 +102,43 @@
     const addBandwidth = document.querySelector('span.addBandwidth')
     const bandwidthButton = document.querySelector('button.bandwidth')
 
+    const addIndexStats = document.querySelector('span.addIndexStats')
+    const indexStatsButton = document.querySelector('button.indexStats')
+
     const addCyberlink = document.querySelector('span.addCyberlink')
     const cyberlinkButton = document.querySelector('button.cyberlink')
 
     const addSend = document.querySelector('span.addSend')
     const sendButton = document.querySelector('button.send')
 
+    const addDelegate = document.querySelector('span.addDelegate')
+    const delegateButton = document.querySelector('button.delegate')
+
+    const addRedelegate = document.querySelector('span.addRedelegate')
+    const redelegateButton = document.querySelector('button.redelegate')
+
+    const addUndelegate = document.querySelector('span.addUndelegate')
+    const undelegateButton = document.querySelector('button.undelegate')
+
+    //----------------------------------------------------------
+
     connectButton.addEventListener('click', connect)
+    
     accountButton.addEventListener('click', getAccount)
     accountInfoButton.addEventListener('click', getAccountInfo)
     statusButton.addEventListener('click', getStatus)
     bandwidthButton.addEventListener('click', getBandwidth)
+    indexStatsButton.addEventListener('click', getIndexStats)
+    
     cyberlinkButton.addEventListener('click', createCyberlink)
     sendButton.addEventListener('click', createSend)
+
+    delegateButton.addEventListener('click', createDelegate)
+    redelegateButton.addEventListener('click', createRedelegate)
+    undelegateButton.addEventListener('click', createUndelegate)
+
+
+    //----------------------------------------------------------
 
     async function connect () {
       await ethereum.send({
@@ -97,6 +148,8 @@
         }]
       })
     }
+
+    //----------------------------------------------------------
 
     async function getAccount () {
       try {
@@ -159,6 +212,23 @@
       }
     }
 
+    async function getIndexStats () {
+      try {
+        const response = await ethereum.send({
+          method: 'wallet_invokePlugin',
+          params: [snapId, {
+            method: 'getIndexStats'
+          }]
+        })
+        addIndexStats.innerText = JSON.stringify(response)
+      } catch (err) {
+        console.error(err)
+        addIndexStats.innerText = `Problem happened: ' ${JSON.stringify(err)}`
+      }
+    }
+
+    //----------------------------------------------------------
+
     async function createCyberlink () {
       try {
         let data = {}
@@ -182,7 +252,7 @@
       try {
         let data = {}
         data['subjectTo'] = document.querySelector('.subject_to').value
-        data['amount'] = document.querySelector('.amount').value
+        data['amount'] = document.querySelector('.amount_send').value
         const response = await ethereum.send({
           method: 'wallet_invokePlugin',
           params: [snapId, {
@@ -194,6 +264,64 @@
       } catch (err) {
         console.error(err)
         addSend.innerText = `Problem happened: ' ${JSON.stringify(err)}`
+      }
+    }
+
+    async function createDelegate () {
+      try {
+        let data = {}
+        data['validatorTo'] = document.querySelector('.validator_to').value
+        data['amount'] = document.querySelector('.amount_delegate').value
+        const response = await ethereum.send({
+          method: 'wallet_invokePlugin',
+          params: [snapId, {
+            method: 'createDelegate',
+            params: [data]
+          }]
+        })
+        addDelegate.innerText = JSON.stringify(response)
+      } catch (err) {
+        console.error(err)
+        addDelegate.innerText = `Problem happened: ' ${JSON.stringify(err)}`
+      }
+    }
+
+    async function createRedelegate () {
+      try {
+        let data = {}
+        data['validatorFrom'] = document.querySelector('.validator_from').value
+        data['validatorTo'] = document.querySelector('.validator_to').value
+        data['amount'] = document.querySelector('.amount_redelegate').value
+        const response = await ethereum.send({
+          method: 'wallet_invokePlugin',
+          params: [snapId, {
+            method: 'createRedelegate',
+            params: [data]
+          }]
+        })
+        addRedelegate.innerText = JSON.stringify(response)
+      } catch (err) {
+        console.error(err)
+        addRedelegate.innerText = `Problem happened: ' ${JSON.stringify(err)}`
+      }
+    }
+
+    async function createUndelegate () {
+      try {
+        let data = {}
+        data['validatorFrom'] = document.querySelector('.validator_from').value
+        data['amount'] = document.querySelector('.amount_undelegate').value
+        const response = await ethereum.send({
+          method: 'wallet_invokePlugin',
+          params: [snapId, {
+            method: 'createUndelegate',
+            params: [data]
+          }]
+        })
+        addUndelegate.innerText = JSON.stringify(response)
+      } catch (err) {
+        console.error(err)
+        addUndelegate.innerText = `Problem happened: ' ${JSON.stringify(err)}`
       }
     }
 
