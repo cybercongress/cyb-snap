@@ -34,37 +34,86 @@ wallet.registerRpcMessageHandler(async (_originString, requestObject) => {
       pubKey = await getPubKey()
       account = await getAccount(pubKey)
       let linkData = requestObject.params[0]
-      return await createCyberlinkTx(linkData['objectFrom'], linkData['objectTo'])
+      return await createCyberlinkTx(
+        linkData['objectFrom'],
+        linkData['objectTo']
+      )
     case 'createSend':
       pubKey = await getPubKey()
       account = await getAccount(pubKey)
       let sendData = requestObject.params[0]
-      return await createSendTx(sendData['subjectTo'], sendData['amount'])
+      return await createSendTx(
+        sendData['subjectTo'],
+        sendData['amount']
+      )
     case 'createDelegate':
       pubKey = await getPubKey()
       account = await getAccount(pubKey)
       let delegateData = requestObject.params[0]
-      return await createDelegateTx(delegateData['validatorTo'], delegateData['amount'])
+      return await createDelegateTx(
+        delegateData['validatorTo'],
+        delegateData['amount']
+      )
     case 'createRedelegate':
       pubKey = await getPubKey()
       account = await getAccount(pubKey)
       let redelegateData = requestObject.params[0]
-      return await createRedelegateTx(redelegateData['validatorFrom'], redelegateData['validatorTo'], redelegateData['amount'])
+      return await createRedelegateTx(
+        redelegateData['validatorFrom'],
+        redelegateData['validatorTo'],
+        redelegateData['amount']
+      )
     case 'createUndelegate':
       pubKey = await getPubKey()
       account = await getAccount(pubKey)
       let undelegateData = requestObject.params[0]
-      return await createUndelegateTx(undelegateData['validatorFrom'], undelegateData['amount'])
+      return await createUndelegateTx(
+        undelegateData['validatorFrom'],
+        undelegateData['amount']
+      )
+      case 'createWithdrawDelegationReward':
+        pubKey = await getPubKey()
+        account = await getAccount(pubKey)
+        let withdrawDelegationReward = requestObject.params[0]
+        return await createWithdrawDelegationRewardTx(
+          withdrawDelegationReward['rewards']
+        )
     case 'createTextProposal':
-      throw rpcErrors.methodNotFound(requestObject)
+      pubKey = await getPubKey()
+      account = await getAccount(pubKey)
+      let textProposalData = requestObject.params[0]
+      return await createTextProposalTx(
+        textProposalData['title'],
+        textProposalData['description'],
+        textProposalData['deposit']
+      )
     case 'createCommunityPoolSpend':
-      throw rpcErrors.methodNotFound(requestObject)
-    case 'createVotingDeposit':
-      throw rpcErrors.methodNotFound(requestObject)
-    case 'createApplyVote':
-      throw rpcErrors.methodNotFound(requestObject)
-    case 'createWithdrawDelegationReward':
-      throw rpcErrors.methodNotFound(requestObject)
+      pubKey = await getPubKey()
+      account = await getAccount(pubKey)
+      let communitySpendProposalData = requestObject.params[0]
+      return await createCommunityPoolSpendProposalTx(
+        communitySpendProposalData['title'],
+        communitySpendProposalData['description'],
+        communitySpendProposalData['recipient'],
+        communitySpendProposalData['deposit'],
+        communitySpendProposalData['amount']
+      )
+    case 'createDeposit':
+      pubKey = await getPubKey()
+      account = await getAccount(pubKey)
+      let depositData = requestObject.params[0]
+      return await createDepositTx(
+        depositData['proposalId'],
+        depositData['amount']
+      )
+    case 'createVote':
+      pubKey = await getPubKey()
+      account = await getAccount(pubKey)
+      let voteData = requestObject.params[0]
+      return await createVoteTx(
+        voteData['proposalId'],
+        voteData['option']
+      )
 
     default:
       throw rpcErrors.methodNotFound(requestObject)
@@ -391,7 +440,7 @@ function createUndelegate(txContext, validatorBech32, amount, denom, memo) {
   return txSkeleton;
 }
 
-function createWithdrawDelegationReward(txContext, address, rewards, denom, memo) {
+function createWithdrawDelegationReward(txContext, rewards, denom, memo) {
   const txSkeleton = createSkeletonCyber(txContext, denom);
   txSkeleton.value.msg = [];
 
@@ -399,7 +448,7 @@ function createWithdrawDelegationReward(txContext, address, rewards, denom, memo
     txSkeleton.value.msg.push({
       type: 'cosmos-sdk/MsgWithdrawDelegationReward',
       value: {
-        delegator_address: address,
+        delegator_address: txContext.bech32,
         validator_address: rewards[key].validator_address,
       },
     });
@@ -410,7 +459,7 @@ function createWithdrawDelegationReward(txContext, address, rewards, denom, memo
   return txSkeleton;
 }
 
-function createTextProposal(txContext, address, title, description, deposit, denom, memo) {
+function createTextProposal(txContext, title, description, deposit, denom, memo) {
   const txSkeleton = createSkeletonCyber(txContext, denom);
 
   const txMsg = {
@@ -424,7 +473,7 @@ function createTextProposal(txContext, address, title, description, deposit, den
         },
       },
       initial_deposit: deposit,
-      proposer: address,
+      proposer: txContext.bech32,
     },
   };
 
@@ -434,7 +483,7 @@ function createTextProposal(txContext, address, title, description, deposit, den
   return txSkeleton;
 }
 
-function createCommunityPoolSpendProposal(txContext, address, title, description, recipient, deposit, amount, denom, memo) {
+function createCommunityPoolSpendProposal(txContext, title, description, recipient, deposit, amount, denom, memo) {
   const txSkeleton = createSkeletonCyber(txContext, denom);
 
   const txMsg = {
@@ -450,7 +499,7 @@ function createCommunityPoolSpendProposal(txContext, address, title, description
         },
       },
       initial_deposit: deposit,
-      proposer: address,
+      proposer: txContext.bech32,
     },
   };
 
@@ -573,6 +622,89 @@ async function createUndelegateTx(validatorFrom, amount) {
     txContext,
     validatorFrom,
     amount,
+    DENOM_CYBER,
+    MEMO
+  );
+  
+  const signedTx = await sign(tx, txContext);
+  return txSubmit(signedTx)
+  // return signedTx
+};
+
+async function createWithdrawDelegationRewardTx(rewards) {
+  const txContext = await createTxContext()
+
+  const tx = await createWithdrawDelegationReward(
+    txContext,
+    rewards,
+    DENOM_CYBER,
+    MEMO
+  );
+  
+  const signedTx = await sign(tx, txContext);
+  return txSubmit(signedTx)
+  // return signedTx
+}
+
+async function createTextProposalTx(title, description, deposit) {
+  const txContext = await createTxContext()
+
+  const tx = await createTextProposal(
+    txContext,
+    title,
+    description,
+    deposit,
+    DENOM_CYBER,
+    MEMO
+  );
+  
+  const signedTx = await sign(tx, txContext);
+  return txSubmit(signedTx)
+  // return signedTx
+};
+
+async function createCommunityPoolSpendProposalTx(title, description, recipient, deposit, amount) {
+  const txContext = await createTxContext()
+
+  const tx = await createCommunityPoolSpendProposal(
+    txContext,
+    title,
+    description,
+    recipient,
+    deposit,
+    amount,
+    DENOM_CYBER,
+    MEMO
+  );
+  
+  const signedTx = await sign(tx, txContext);
+  return txSubmit(signedTx)
+  // return signedTx
+};
+
+async function createDepositTx(proposalId, amount) {
+  const txContext = await createTxContext()
+
+  const tx = await createDeposit(
+    txContext,
+    proposalId,
+    amount,
+    DENOM_CYBER,
+    MEMO
+  );
+  
+  const signedTx = await sign(tx, txContext);
+  return txSubmit(signedTx)
+  // return signedTx
+};
+
+async function createVoteTx(proposalId, option) {
+  const txContext = await createTxContext()
+
+  const tx = await createVote(
+    txContext,
+    proposalId,
+    option,
     DENOM_CYBER,
     MEMO
   );
