@@ -434,7 +434,7 @@ function createTextProposal(txContext, address, title, description, deposit, den
   return txSkeleton;
 }
 
-function createCommunityPool(txContext, address, title, description, recipient, deposit, amount, denom, memo) {
+function createCommunityPoolSpendProposal(txContext, address, title, description, recipient, deposit, amount, denom, memo) {
   const txSkeleton = createSkeletonCyber(txContext, denom);
 
   const txMsg = {
@@ -451,6 +451,47 @@ function createCommunityPool(txContext, address, title, description, recipient, 
       },
       initial_deposit: deposit,
       proposer: address,
+    },
+  };
+
+  txSkeleton.value.msg = [txMsg];
+  txSkeleton.value.memo = memo || '';
+
+  return txSkeleton;
+}
+
+function createDeposit(txContext, proposalId, amount, denom, memo) {
+  const txSkeleton = createSkeletonCyber(txContext, denom);
+
+  const txMsg = {
+    type: 'cosmos-sdk/MsgDeposit',
+    value: {
+      amount: [
+        {
+          amount: amount.toString(),
+          denom: denom,
+        },
+      ],
+      proposal_id: proposalId,
+      depositor: txContext.bech32,
+    },
+  };
+
+  txSkeleton.value.msg = [txMsg];
+  txSkeleton.value.memo = memo || '';
+
+  return txSkeleton;
+}
+
+function createVote(txContext, proposalId, option, denom, memo) {
+  const txSkeleton = createSkeletonCyber(txContext, denom);
+
+  const txMsg = {
+    type: 'cosmos-sdk/MsgVote',
+    value: {
+      proposal_id: proposalId,
+      voter: txContext.bech32,
+      option: option,
     },
   };
 
