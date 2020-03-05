@@ -36,7 +36,7 @@ Open localhost:8084 and press connect. Metamask will ask you to add snap and pro
 Note to devs: mm-snap serve will update your front-side but to update snap's bundle code and you need to build bundle after changes, remove plugin and permissions from metamask and install them again pressing connect.
 
 ### Status
-This is a useful PoC.
+This is a useful PoC and case for developers of snaps / cosmos community.
 
 - [x] Communication with cyber (rpc calls / create and sign txs)
 - [x] Get your account info
@@ -46,5 +46,10 @@ This is a useful PoC.
 - [x] Send tokens
 
 ### Roadmap
+- all cosmos native msgs types
+- dynamic chain-id configuration
+- dynamic endpoints configuration
+- cosmwasm support
+- versioning
 
 ### Gitcoin
