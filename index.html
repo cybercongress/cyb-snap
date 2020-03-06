@@ -32,7 +32,7 @@
     </p>
 
     <p>
-      <button class="status">Get Status</button>
+      <button class="status">Get Network Status</button>
       <span class="addStatus"></span>
     </p>
 
@@ -47,6 +47,11 @@
     </p>
 
     <p>
+      <button class="rewards">Get Delegation Rewards</button>
+      <span class="addRewards"></span>
+    </p>
+
+    <p>
       <input class="object_from" placeholder="from" />
       <input class="object_to" placeholder="to" />
       <button class="cyberlink">Create cyberlink!</button>
@@ -54,32 +59,79 @@
     </p>
 
     <p>
-      <input class="subject_to" placeholder="to" />
-      <input class="amount_send" placeholder="amount" />
+      <input class="send_to" placeholder="to" />
+      <input class="send_amount" placeholder="amount" />
       <button class="send">Create send!</button>
       <span class="addSend"></span>
     </p>
 
     <p>
-      <input class="validator_to" placeholder="to" />
-      <input class="amount_delegate" placeholder="amount" />
+      <input class="delegate_validator_to" placeholder="to" />
+      <input class="delegate_amount" placeholder="amount" />
       <button class="delegate">Delegate</button>
       <span class="addDelegate"></span>
     </p>
 
     <p>
-      <input class="validator_from" placeholder="from" />
-      <input class="validator_to" placeholder="to" />
-      <input class="amount_redelegate" placeholder="amount" />
+      <input class="redelegate_validator_from" placeholder="from" />
+      <input class="redelegate_validator_to" placeholder="to" />
+      <input class="redelegate_amount" placeholder="amount" />
       <button class="redelegate">Redelegate</button>
       <span class="addRedelegate"></span>
     </p>
 
     <p>
-      <input class="validator_from" placeholder="from" />
-      <input class="amount_undelegate" placeholder="amount" />
+      <input class="undelegate_validator_from" placeholder="from" />
+      <input class="undelegate_amount" placeholder="amount" />
       <button class="undelegate">Undelegate</button>
       <span class="addUndelegate"></span>
+    </p>
+
+    <p>
+      <input class="withdraw_delegation_rewards" placeholder="rewards" />
+      <button class="withdrawDelegationReward">Withdraw Delegation Reward</button>
+      <span class="addWithdrawDelegationReward"></span>
+    </p>
+
+    <p>
+      <input class="text_proposal_title" placeholder="title" />
+      <input class="text_proposal_description" placeholder="description" />
+      <input class="text_proposal_deposit" placeholder="deposit" />
+      <button class="textProposal">Create Text proposal</button>
+      <span class="addTextProposal"></span>
+    </p>
+
+    <p>
+      <input class="community_pool_spend_title" placeholder="title" />
+      <input class="community_pool_spend_description" placeholder="description" />
+      <input class="community_pool_spend_recipient" placeholder="recipient" />
+      <input class="community_pool_spend_deposit" placeholder="deposit" />
+      <input class="community_pool_spend_amount" placeholder="amount" />
+      <button class="communityPoolSpend">Create Community Pool Spend</button>
+      <span class="addCommunityPoolSpend"></span>
+    </p>
+
+    <p>
+      <input class="params_change_title" placeholder="title" />
+      <input class="params_change_description" placeholder="description" />
+      <input class="params_change_changes" placeholder="changes" />
+      <input class="params_change_deposit" placeholder="deposit" />
+      <button class="paramsChange">Create Params Change</button>
+      <span class="addParamsChange"></span>
+    </p>
+
+    <p>
+      <input class="proposal_deposit_id" placeholder="id" />
+      <input class="proposal_deposit_amount" placeholder="amount" />
+      <button class="deposit">Create Voting Deposit</button>
+      <span class="addDeposit"></span>
+    </p>
+
+    <p>
+      <input class="proposal_vote_id" placeholder="id" />
+      <input class="proposal_vote_option" placeholder="option" />
+      <button class="vote">Create Vote</button>
+      <span class="addVote"></span>
     </p>
    
   </body>
@@ -105,6 +157,9 @@
     const addIndexStats = document.querySelector('span.addIndexStats')
     const indexStatsButton = document.querySelector('button.indexStats')
 
+    const addRewards = document.querySelector('span.addRewards')
+    const rewardsButton = document.querySelector('button.rewards')
+
     const addCyberlink = document.querySelector('span.addCyberlink')
     const cyberlinkButton = document.querySelector('button.cyberlink')
 
@@ -120,6 +175,24 @@
     const addUndelegate = document.querySelector('span.addUndelegate')
     const undelegateButton = document.querySelector('button.undelegate')
 
+    const addWithdrawDelegationReward = document.querySelector('span.addWithdrawDelegationReward')
+    const withdrawDelegationRewardButton = document.querySelector('button.withdrawDelegationReward')
+
+    const addTextProposal = document.querySelector('span.addTextProposal')
+    const textProposalButton = document.querySelector('button.textProposal')
+
+    const addCommunityPoolSpend = document.querySelector('span.addCommunityPoolSpend')
+    const communityPoolSpendButton = document.querySelector('button.communityPoolSpend')
+
+    const addParamsChange = document.querySelector('span.addParamsChange')
+    const paramsChangeButton = document.querySelector('button.paramsChange')
+
+    const addDeposit = document.querySelector('span.addDeposit')
+    const depositButton = document.querySelector('button.deposit')
+
+    const addVote = document.querySelector('span.addVote')
+    const voteButton = document.querySelector('button.vote')
+
     //----------------------------------------------------------
 
     connectButton.addEventListener('click', connect)
@@ -129,6 +202,7 @@
     statusButton.addEventListener('click', getStatus)
     bandwidthButton.addEventListener('click', getBandwidth)
     indexStatsButton.addEventListener('click', getIndexStats)
+    rewardsButton.addEventListener('click', getRewards)
     
     cyberlinkButton.addEventListener('click', createCyberlink)
     sendButton.addEventListener('click', createSend)
@@ -136,6 +210,13 @@
     delegateButton.addEventListener('click', createDelegate)
     redelegateButton.addEventListener('click', createRedelegate)
     undelegateButton.addEventListener('click', createUndelegate)
+    withdrawDelegationRewardButton.addEventListener('click', createWithdrawDelegationReward)
+
+    textProposalButton.addEventListener('click', createTextProposal)
+    communityPoolSpendButton.addEventListener('click', createCommunityPoolSpend)
+    paramsChangeButton.addEventListener('click', createParamsChangeProposal)
+    depositButton.addEventListener('click', createDeposit)
+    voteButton.addEventListener('click', createVote)
 
 
     //----------------------------------------------------------
@@ -160,7 +241,6 @@
           }]
         })
         addAccount.innerText = JSON.stringify(response)
-        console.log("getAccount: ", JSON.stringify(response))
       } catch (err) {
         console.error(err)
         addAccount.innerText = `Problem happened: ' ${JSON.stringify(err)}`
@@ -227,6 +307,21 @@
       }
     }
 
+    async function getRewards () {
+      try {
+        const response = await ethereum.send({
+          method: 'wallet_invokePlugin',
+          params: [snapId, {
+            method: 'getRewards'
+          }]
+        })
+        addRewards.innerText = JSON.stringify(response)
+      } catch (err) {
+        console.error(err)
+        addRewards.innerText = `Problem happened: ' ${JSON.stringify(err)}`
+      }
+    }
+
     //----------------------------------------------------------
 
     async function createCyberlink () {
@@ -251,8 +346,8 @@
     async function createSend () {
       try {
         let data = {}
-        data['subjectTo'] = document.querySelector('.subject_to').value
-        data['amount'] = document.querySelector('.amount_send').value
+        data['subjectTo'] = document.querySelector('.send_to').value
+        data['amount'] = document.querySelector('.send_amount').value
         const response = await ethereum.send({
           method: 'wallet_invokePlugin',
           params: [snapId, {
@@ -270,8 +365,8 @@
     async function createDelegate () {
       try {
         let data = {}
-        data['validatorTo'] = document.querySelector('.validator_to').value
-        data['amount'] = document.querySelector('.amount_delegate').value
+        data['validatorTo'] = document.querySelector('.delegate_validator_to').value
+        data['amount'] = document.querySelector('.delegate_amount').value
         const response = await ethereum.send({
           method: 'wallet_invokePlugin',
           params: [snapId, {
@@ -289,9 +384,9 @@
     async function createRedelegate () {
       try {
         let data = {}
-        data['validatorFrom'] = document.querySelector('.validator_from').value
-        data['validatorTo'] = document.querySelector('.validator_to').value
-        data['amount'] = document.querySelector('.amount_redelegate').value
+        data['validatorFrom'] = document.querySelector('.redelegate_validator_from').value
+        data['validatorTo'] = document.querySelector('.redelegate_validator_to').value
+        data['amount'] = document.querySelector('.redelegate_amount').value
         const response = await ethereum.send({
           method: 'wallet_invokePlugin',
           params: [snapId, {
@@ -309,8 +404,8 @@
     async function createUndelegate () {
       try {
         let data = {}
-        data['validatorFrom'] = document.querySelector('.validator_from').value
-        data['amount'] = document.querySelector('.amount_undelegate').value
+        data['validatorFrom'] = document.querySelector('.undelegate_validator_from').value
+        data['amount'] = document.querySelector('.undelegate_amount').value
         const response = await ethereum.send({
           method: 'wallet_invokePlugin',
           params: [snapId, {
@@ -322,6 +417,125 @@
       } catch (err) {
         console.error(err)
         addUndelegate.innerText = `Problem happened: ' ${JSON.stringify(err)}`
+      }
+    }
+
+    async function createWithdrawDelegationReward () {
+      try {
+        let data = {}
+        data['rewards'] = document.querySelector('.withdraw_delegation_rewards').value
+        const response = await ethereum.send({
+          method: 'wallet_invokePlugin',
+          params: [snapId, {
+            method: 'createWithdrawDelegationReward',
+            params: [data]
+          }]
+        })
+        addWithdrawDelegationReward.innerText = JSON.stringify(response)
+      } catch (err) {
+        console.error(err)
+        addWithdrawDelegationReward.innerText = `Problem happened: ' ${JSON.stringify(err)}`
+      }
+    }
+
+    async function createTextProposal () {
+      try {
+        let data = {}
+        data['title'] = document.querySelector('.text_proposal_title').value
+        data['description'] = document.querySelector('.text_proposal_description').value
+        data['deposit'] = document.querySelector('.text_proposal_deposit').value
+        const response = await ethereum.send({
+          method: 'wallet_invokePlugin',
+          params: [snapId, {
+            method: 'createTextProposal',
+            params: [data]
+          }]
+        })
+        addTextProposal.innerText = JSON.stringify(response)
+      } catch (err) {
+        console.error(err)
+        addTextProposal.innerText = `Problem happened: ' ${JSON.stringify(err)}`
+      }
+    }
+
+    async function createCommunityPoolSpend () {
+      try {
+        let data = {}
+        data['title'] = document.querySelector('.community_pool_spend_title').value
+        data['description'] = document.querySelector('.community_pool_spend_description').value
+        data['recipient'] = document.querySelector('.community_pool_spend_recipient').value
+        data['deposit'] = document.querySelector('.community_pool_spend_deposit').value
+        data['amount'] = document.querySelector('.community_pool_spend_amount').value
+        const response = await ethereum.send({
+          method: 'wallet_invokePlugin',
+          params: [snapId, {
+            method: 'createCommunityPoolSpend',
+            params: [data]
+          }]
+        })
+        addCommunityPoolSpend.innerText = JSON.stringify(response)
+      } catch (err) {
+        console.error(err)
+        addCommunityPoolSpend.innerText = `Problem happened: ' ${JSON.stringify(err)}`
+      }
+    }
+
+    async function createParamsChangeProposal () {
+      try {
+        let data = {}
+        data['title'] = document.querySelector('.params_change_title').value
+        data['description'] = document.querySelector('.params_change_description').value
+        data['changes'] = document.querySelector('.params_change_changes').value
+        data['deposit'] = document.querySelector('.params_change_deposit').value
+        const response = await ethereum.send({
+          method: 'wallet_invokePlugin',
+          params: [snapId, {
+            method: 'createParamsChangeProposal',
+            params: [data]
+          }]
+        })
+        addParamsChange.innerText = JSON.stringify(response)
+      } catch (err) {
+        console.error(err)
+        addParamsChange.innerText = `Problem happened: ' ${JSON.stringify(err)}`
+      }
+    }
+
+    async function createDeposit () {
+      try {
+        let data = {}
+        data['proposalId'] = document.querySelector('.proposal_deposit_id').value
+        data['amount'] = document.querySelector('.proposal_deposit_amount').value
+        const response = await ethereum.send({
+          method: 'wallet_invokePlugin',
+          params: [snapId, {
+            method: 'createDeposit',
+            params: [data]
+          }]
+        })
+        addDeposit.innerText = JSON.stringify(response)
+      } catch (err) {
+        console.error(err)
+        addDeposit.innerText = `Problem happened: ' ${JSON.stringify(err)}`
+      }
+    }
+
+    async function createVote () {
+      try {
+        let data = {}
+        data['proposalId'] = document.querySelector('.proposal_vote_id').value
+        data['option'] = document.querySelector('.proposal_vote_option').value
+        const response = await ethereum.send({
+          method: 'wallet_invokePlugin',
+          params: [snapId, {
+            method: 'createVote',
+            params: [data]
+          }]
+        })
+        addVote.innerText = JSON.stringify(response)
+      } catch (err) {
+        console.error(err)
+        addVote.innerText = `Problem happened: ' ${JSON.stringify(err)}`
       }
     }
 

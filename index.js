@@ -1,15 +1,21 @@
 const { errors: rpcErrors } = require('eth-json-rpc-errors')
-const secp256k1 = require('noble-secp256k1')
+
+// TODO use only one of those
+const secp256k1 = require('noble-secp256k1') 
 const Secp256k1 = require('secp256k1');
+
 const bech32 = require('bech32')
 const Sha256 = require('sha256');
 const RIPEMD160 = require('ripemd160');
 
 const CYBER_NODE_URL = "https://mars.cybernode.ai"
+const API_PATH = "dev_api"
+const LCD_PATH = "dev_lcd"
+
 const PREFIX = "cyber"
 const DENOM_CYBER = "eul"
 const MEMO = "sent from cyb-virus snap!"
-const DEFAULT_GAS = 150000
+const DEFAULT_GAS = 200000
 
 wallet.registerRpcMessageHandler(async (_originString, requestObject) => {
   let pubKey, account;
@@ -30,33 +36,31 @@ wallet.registerRpcMessageHandler(async (_originString, requestObject) => {
       return await getAccountBandwidth(account)
     case 'getIndexStats':
       return await getIndexStats()
-    case 'createCyberlink':
+    case 'getRewards':
       pubKey = await getPubKey()
-      account = await getAccount(pubKey)
+      account = getAccount(pubKey)
+      return await getRewards(account)
+    case 'createCyberlink':
       let linkData = requestObject.params[0]
       return await createCyberlinkTx(
         linkData['objectFrom'],
         linkData['objectTo']
       )
     case 'createSend':
-      pubKey = await getPubKey()
-      account = await getAccount(pubKey)
       let sendData = requestObject.params[0]
       return await createSendTx(
         sendData['subjectTo'],
         sendData['amount']
       )
+    case 'createMultiSend':
+      throw rpcErrors.methodNotFound(requestObject)
     case 'createDelegate':
-      pubKey = await getPubKey()
-      account = await getAccount(pubKey)
       let delegateData = requestObject.params[0]
       return await createDelegateTx(
         delegateData['validatorTo'],
         delegateData['amount']
       )
     case 'createRedelegate':
-      pubKey = await getPubKey()
-      account = await getAccount(pubKey)
       let redelegateData = requestObject.params[0]
       return await createRedelegateTx(
         redelegateData['validatorFrom'],
@@ -64,23 +68,17 @@ wallet.registerRpcMessageHandler(async (_originString, requestObject) => {
         redelegateData['amount']
       )
     case 'createUndelegate':
-      pubKey = await getPubKey()
-      account = await getAccount(pubKey)
       let undelegateData = requestObject.params[0]
       return await createUndelegateTx(
         undelegateData['validatorFrom'],
         undelegateData['amount']
       )
       case 'createWithdrawDelegationReward':
-        pubKey = await getPubKey()
-        account = await getAccount(pubKey)
         let withdrawDelegationReward = requestObject.params[0]
         return await createWithdrawDelegationRewardTx(
           withdrawDelegationReward['rewards']
         )
     case 'createTextProposal':
-      pubKey = await getPubKey()
-      account = await getAccount(pubKey)
       let textProposalData = requestObject.params[0]
       return await createTextProposalTx(
         textProposalData['title'],
@@ -88,8 +86,6 @@ wallet.registerRpcMessageHandler(async (_originString, requestObject) => {
         textProposalData['deposit']
       )
     case 'createCommunityPoolSpend':
-      pubKey = await getPubKey()
-      account = await getAccount(pubKey)
       let communitySpendProposalData = requestObject.params[0]
       return await createCommunityPoolSpendProposalTx(
         communitySpendProposalData['title'],
@@ -98,17 +94,21 @@ wallet.registerRpcMessageHandler(async (_originString, requestObject) => {
         communitySpendProposalData['deposit'],
         communitySpendProposalData['amount']
       )
+    case 'createParamsChangeProposal':
+      let paramsChangeProposalData = requestObject.params[0]
+      return await createParamsChangeProposalTx(
+        paramsChangeProposalData['title'],
+        paramsChangeProposalData['description'],
+        paramsChangeProposalData['changes'],
+        paramsChangeProposalData['deposit']
+      )
     case 'createDeposit':
-      pubKey = await getPubKey()
-      account = await getAccount(pubKey)
       let depositData = requestObject.params[0]
       return await createDepositTx(
         depositData['proposalId'],
         depositData['amount']
       )
     case 'createVote':
-      pubKey = await getPubKey()
-      account = await getAccount(pubKey)
       let voteData = requestObject.params[0]
       return await createVoteTx(
         voteData['proposalId'],
@@ -168,7 +168,7 @@ async function getNetworkId() {
 
 async function getAccountInfo(address) {
   try {
-    const response = await fetch(`${CYBER_NODE_URL}/dev_api/account?address="${address}"`, {
+    const response = await fetch(`${CYBER_NODE_URL}/${API_PATH}/account?address="${address}"`, {
       method: 'GET',
       headers: {
         Accept: 'application/json',
@@ -199,7 +199,7 @@ async function getAccountBandwidth(address) {
     };
 
     const response = await fetch(
-      `${CYBER_NODE_URL}/dev_api/account_bandwidth?address="${address}"`, {
+      `${CYBER_NODE_URL}/${API_PATH}/account_bandwidth?address="${address}"`, {
         method: 'GET',
         headers: {
           Accept: 'application/json',
@@ -221,7 +221,7 @@ async function getAccountBandwidth(address) {
 
 async function getStatus() {
   try {
-    const response = await fetch(`${CYBER_NODE_URL}/dev_api/status`, {
+    const response = await fetch(`${CYBER_NODE_URL}/${API_PATH}/status`, {
       method: 'GET',
       headers: {
         Accept: 'application/json',
@@ -239,7 +239,7 @@ async function getStatus() {
 
 async function getIndexStats() {
   try {
-    const response = await fetch(`${CYBER_NODE_URL}/dev_api/index_stats`, {
+    const response = await fetch(`${CYBER_NODE_URL}/${API_PATH}/index_stats`, {
       method: 'GET',
       headers: {
         Accept: 'application/json',
@@ -250,6 +250,24 @@ async function getIndexStats() {
     if(!data.result) { throw error };
 
     return data.result;
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+async function getRewards(address) {
+  try {
+    const response = await fetch(`${CYBER_NODE_URL}/${LCD_PATH}/distribution/delegators/${address}/rewards`, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+    });
+    const data = await response.json();
+    if(!data.result.rewards) { throw error };
+
+    return data.result.rewards;
   } catch (error) {
     console.error(error)
   }
@@ -331,13 +349,13 @@ async function createTxContext() {
 
 //----------------------------------------------------------
 
-function createCyberlink(txContext, address, objectFrom, objectTo, memo) {
+function createCyberlink(txContext, objectFrom, objectTo, memo) {
   const txSkeleton = createSkeletonCyber(txContext, DENOM_CYBER);
 
   const txMsg = {
     type: 'cyberd/Link',
     value: {
-      address,
+      address: txContext.bech32,
       links: [
         {
           from: objectFrom,
@@ -468,11 +486,14 @@ function createTextProposal(txContext, title, description, deposit, denom, memo)
       content: {
         type: 'cosmos-sdk/TextProposal',
         value: {
-          description,
-          title,
+          title: title,
+          description: description,
         },
       },
-      initial_deposit: deposit,
+      initial_deposit: [{
+        amount: deposit.toString(),
+        denom: denom,
+      }],
       proposer: txContext.bech32,
     },
   };
@@ -492,13 +513,47 @@ function createCommunityPoolSpendProposal(txContext, title, description, recipie
       content: {
         type: 'cosmos-sdk/CommunityPoolSpendProposal',
         value: {
-          amount,
-          description,
-          recipient,
-          title,
+          title: title,
+          description: description,
+          recipient: recipient,
+          amount: [{
+            amount: amount.toString(),
+            denom: denom,
+          }],
         },
       },
-      initial_deposit: deposit,
+      initial_deposit: [{
+        amount: deposit.toString(),
+        denom: denom,
+      }],
+      proposer: txContext.bech32,
+    },
+  };
+
+  txSkeleton.value.msg = [txMsg];
+  txSkeleton.value.memo = memo || '';
+
+  return txSkeleton;
+}
+
+function createParamsChangeProposal(txContext, title, description, changes, deposit, denom, memo) {
+  const txSkeleton = createSkeletonCyber(txContext, denom);
+
+  const txMsg = {
+    type: 'cosmos-sdk/MsgSubmitProposal',
+    value: {
+      content: {
+        type: 'cosmos-sdk/ParameterChangeProposal',
+        value: {
+          title: title,
+          description: description,
+          changes: changes,
+        },
+      },
+      initial_deposit: [{
+        amount: deposit.toString(),
+        denom: denom,
+      }],
       proposer: txContext.bech32,
     },
   };
@@ -515,14 +570,12 @@ function createDeposit(txContext, proposalId, amount, denom, memo) {
   const txMsg = {
     type: 'cosmos-sdk/MsgDeposit',
     value: {
-      amount: [
-        {
-          amount: amount.toString(),
-          denom: denom,
-        },
-      ],
       proposal_id: proposalId,
       depositor: txContext.bech32,
+      amount: [{
+        amount: amount.toString(),
+        denom: denom,
+    }],
     },
   };
 
@@ -557,14 +610,14 @@ async function createCyberlinkTx (objectFrom, objectTo) {
 
   const tx = await createCyberlink(
     txContext,
-    account,
     objectFrom,
     objectTo,
     MEMO
   );
 
   const signedTx = await sign(tx, txContext);
-  return await txSubmit(signedTx)
+  // return await txSubmit(signedTx)
+  return signedTx
 };
 
 async function createSendTx(subjectTo, amount) {
@@ -580,6 +633,7 @@ async function createSendTx(subjectTo, amount) {
   
   const signedTx = await sign(tx, txContext);
   return txSubmit(signedTx)
+  // return signedTx
 };
 
 async function createDelegateTx(validatorTo, amount) {
@@ -636,7 +690,7 @@ async function createWithdrawDelegationRewardTx(rewards) {
 
   const tx = await createWithdrawDelegationReward(
     txContext,
-    rewards,
+    JSON.parse(rewards),
     DENOM_CYBER,
     MEMO
   );
@@ -673,6 +727,24 @@ async function createCommunityPoolSpendProposalTx(title, description, recipient,
     recipient,
     deposit,
     amount,
+    DENOM_CYBER,
+    MEMO
+  );
+  
+  const signedTx = await sign(tx, txContext);
+  return txSubmit(signedTx)
+  // return signedTx
+};
+
+async function createParamsChangeProposalTx(title, description, changes, deposit) {
+  const txContext = await createTxContext()
+
+  const tx = await createParamsChangeProposal(
+    txContext,
+    title,
+    description,
+    JSON.parse(changes),
+    deposit,
     DENOM_CYBER,
     MEMO
   );
@@ -721,7 +793,7 @@ async function txSubmit(signedTx) {
     tx: signedTx.value,
     mode: 'sync',
   };
-  const url = `${CYBER_NODE_URL}/dev_lcd/txs`;
+  const url = `${CYBER_NODE_URL}/${LCD_PATH}/txs`;
   const response = await fetch(url, {
     method: 'POST',
     headers: {
@@ -779,24 +851,26 @@ function getBytesToSign(tx, txContext) {
     sequence: txContext.sequence.toString(),
   };
 
-  return JSON.stringify(canonicalizeJson(txFieldsToSign));
+  return JSON.stringify(removeEmptyProperties(txFieldsToSign));
 }
 
-function canonicalizeJson(jsonTx) {
+function removeEmptyProperties (jsonTx) {
   if (Array.isArray(jsonTx)) {
-    return jsonTx.map(canonicalizeJson);
+    return jsonTx.map(removeEmptyProperties)
   }
-  if (typeof jsonTx !== 'object') {
-    return jsonTx;
+
+  if (typeof jsonTx !== `object`) {
+    return jsonTx
   }
-  const tmp = {};
+
+  const sorted = {}
   Object.keys(jsonTx)
     .sort()
     .forEach(key => {
-      jsonTx[key] != null && (tmp[key] = jsonTx[key]);
-    });
-
-  return tmp;
+      if (jsonTx[key] === undefined || jsonTx[key] === null) return
+      sorted[key] = removeEmptyProperties(jsonTx[key])
+    })
+  return sorted
 }
 
 function applySignature(unsignedTx, txContext, secp256k1Sig) {
