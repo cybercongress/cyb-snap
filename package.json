@@ -1,6 +1,6 @@
 {
-  "name": "cyb-virus-snap",
-  "version": "0.1.0",
+  "name": "cyb-snap",
+  "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -23,7 +23,8 @@
       "url": "http://localhost:8084/dist/bundle.js"
     },
     "initialPermissions": {
-      "confirm": {}
+      "metamask_getPluginState": {},
+      "metamask_updatePluginState": {}
     },
     "requiredPermissions": []
   }

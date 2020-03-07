@@ -8,19 +8,31 @@ const bech32 = require('bech32')
 const Sha256 = require('sha256');
 const RIPEMD160 = require('ripemd160');
 
-const CYBER_NODE_URL = "https://mars.cybernode.ai"
-const API_PATH = "dev_api"
-const LCD_PATH = "dev_lcd"
-
-const PREFIX = "cyber"
-const DENOM_CYBER = "eul"
-const MEMO = "sent from cyb-virus snap!"
-const DEFAULT_GAS = 200000
+wallet.updatePluginState({
+  nodeUrl: "https://devnet.cybernode.ai",
+  denom: "eul",
+  prefix: "cyber",
+  memo: "sent from metamask's cyb snap!",
+  gas: 200000,
+  version: "1.0.0"
+})
 
 wallet.registerRpcMessageHandler(async (_originString, requestObject) => {
   let pubKey, account;
 
   switch (requestObject.method) {
+    case 'getSnapState':
+      return wallet.getPluginState()
+    case 'setConfig':
+      wallet.updatePluginState({
+        ...currentPluginState,
+        nodeUrl: requestObject[0]['nodeUrl'],
+        denom: requestObject[0]['denom'],
+        prefix: requestObject[0]['prefix'],
+        memo: requestObject[0]['memo'],
+        gas: requestObject[0]['gas'],
+      })
+      return wallet.getPluginState()
     case 'getAccount':
       pubKey = await getPubKey()
       return getAccount(pubKey)
@@ -132,8 +144,9 @@ async function getPubKey () {
 }
 
 function getAccount (pubkey) {
+  const currentPluginState = wallet.getPluginState()
   const address = getAddress(hexToBytes(pubkey))
-  return toBech32(PREFIX, address)
+  return toBech32(currentPluginState.prefix, address)
 }
 
 function getAddress(pubkey) {
@@ -171,8 +184,9 @@ async function getNetworkId() {
 }
 
 async function getAccountInfo(address) {
+  const currentPluginState = wallet.getPluginState()
   try {
-    const response = await fetch(`${CYBER_NODE_URL}/${API_PATH}/account?address="${address}"`, {
+    const response = await fetch(`${currentPluginState.nodeUrl}/api/account?address="${address}"`, {
       method: 'GET',
       headers: {
         Accept: 'application/json',
@@ -196,6 +210,7 @@ async function getAccountInfo(address) {
 }
 
 async function getAccountBandwidth(address) {
+  const currentPluginState = wallet.getPluginState()
   try {
     const bandwidth = {
       remained: 0,
@@ -203,7 +218,7 @@ async function getAccountBandwidth(address) {
     };
 
     const response = await fetch(
-      `${CYBER_NODE_URL}/${API_PATH}/account_bandwidth?address="${address}"`, {
+      `${currentPluginState.nodeUrl}/api/account_bandwidth?address="${address}"`, {
         method: 'GET',
         headers: {
           Accept: 'application/json',
@@ -224,8 +239,9 @@ async function getAccountBandwidth(address) {
 }
 
 async function getStatus() {
+  const currentPluginState = wallet.getPluginState()
   try {
-    const response = await fetch(`${CYBER_NODE_URL}/${API_PATH}/status`, {
+    const response = await fetch(`${currentPluginState.nodeUrl}/api/status`, {
       method: 'GET',
       headers: {
         Accept: 'application/json',
@@ -242,8 +258,9 @@ async function getStatus() {
 }
 
 async function getIndexStats() {
+  const currentPluginState = wallet.getPluginState()
   try {
-    const response = await fetch(`${CYBER_NODE_URL}/${API_PATH}/index_stats`, {
+    const response = await fetch(`${currentPluginState.nodeUrl}/api/index_stats`, {
       method: 'GET',
       headers: {
         Accept: 'application/json',
@@ -260,8 +277,9 @@ async function getIndexStats() {
 }
 
 async function getRewards(address) {
+  const currentPluginState = wallet.getPluginState()
   try {
-    const response = await fetch(`${CYBER_NODE_URL}/${LCD_PATH}/distribution/delegators/${address}/rewards`, {
+    const response = await fetch(`${currentPluginState.nodeUrl}/lcd/distribution/delegators/${address}/rewards`, {
       method: 'GET',
       headers: {
         Accept: 'application/json',
@@ -281,7 +299,7 @@ async function getRewards(address) {
 //----------------------------------------------------------
 
 // TODO refactor to universal skeleton
-const createSkeletonCyber = (txContext, denom) => {
+const createSkeleton = (txContext, denom) => {
   if (typeof txContext === 'undefined') {
     throw new Error('undefined txContext');
   }
@@ -291,12 +309,13 @@ const createSkeletonCyber = (txContext, denom) => {
   if (typeof txContext.sequence === 'undefined') {
     throw new Error('txContext does not contain the sequence value');
   }
+  const currentPluginState = wallet.getPluginState()
   const txSkeleton = {
     type: 'auth/StdTx',
     value: {
       msg: [], // messages
       fee: '',
-      memo: MEMO,
+      memo: currentPluginState.memo,
       signatures: [
         {
           signature: 'N/A',
@@ -310,10 +329,10 @@ const createSkeletonCyber = (txContext, denom) => {
       ],
     },
   };
-  return applyGasCyber(txSkeleton, DEFAULT_GAS, denom);
+  return applyGas(txSkeleton, currentPluginState.gas, denom);
 };
 
-function applyGasCyber(unsignedTx, gas, denom) {
+function applyGas(unsignedTx, gas, denom) {
   if (typeof unsignedTx === 'undefined') {
     throw new Error('undefined unsignedTx');
   }
@@ -324,8 +343,8 @@ function applyGasCyber(unsignedTx, gas, denom) {
   unsignedTx.value.fee = {
     amount: [
       {
-        amount: '0', // TODO apply correct fee for cosmos
-        denom: denom || DENOM_CYBER,
+        amount: '0', // TODO apply fee for cosmos support
+        denom: denom,
       },
     ],
     gas: gas.toString(),
@@ -339,12 +358,14 @@ async function createTxContext() {
   const account = getAccount(pubKey)
   const accountInfo = await getAccountInfo(account)
 
+  const currentPluginState = wallet.getPluginState()
+
   const txContext = {
     accountNumber: accountInfo.account_number,
     chainId: accountInfo.chainId,
     sequence: accountInfo.sequence,
     bech32: account,
-    memo: MEMO,
+    memo: currentPluginState.memo,
     pk: pubKey.toString('hex'),
   };
   
@@ -353,8 +374,8 @@ async function createTxContext() {
 
 //----------------------------------------------------------
 
-function createCyberlink(txContext, objectFrom, objectTo, memo) {
-  const txSkeleton = createSkeletonCyber(txContext, DENOM_CYBER);
+function createCyberlink(txContext, objectFrom, objectTo, denom) {
+  const txSkeleton = createSkeleton(txContext, denom);
 
   const txMsg = {
     type: 'cyberd/Link',
@@ -370,13 +391,12 @@ function createCyberlink(txContext, objectFrom, objectTo, memo) {
   };
 
   txSkeleton.value.msg = [txMsg];
-  txSkeleton.value.memo = memo || '';
 
   return txSkeleton;
 }
 
-function createSend(txContext, recipient, amount, denom, memo) {
-  const txSkeleton = createSkeletonCyber(txContext, denom);
+function createSend(txContext, recipient, amount, denom) {
+  const txSkeleton = createSkeleton(txContext, denom);
 
   const txMsg = {
     type: 'cosmos-sdk/MsgSend',
@@ -393,13 +413,12 @@ function createSend(txContext, recipient, amount, denom, memo) {
   };
 
   txSkeleton.value.msg = [txMsg];
-  txSkeleton.value.memo = memo || '';
 
   return txSkeleton;
 }
 
-function createMultiSend(txContext, inputs, outputs, denom, memo) {
-  const txSkeleton = createSkeletonCyber(txContext, denom);
+function createMultiSend(txContext, inputs, outputs, denom) {
+  const txSkeleton = createSkeleton(txContext, denom);
 
   const txMsg = {
     type: 'cosmos-sdk/MsgMultiSend',
@@ -410,13 +429,12 @@ function createMultiSend(txContext, inputs, outputs, denom, memo) {
   };
 
   txSkeleton.value.msg = [txMsg];
-  txSkeleton.value.memo = memo || '';
 
   return txSkeleton;
 }
 
-function createDelegate(txContext, validatorBech32, amount, denom, memo) {
-  const txSkeleton = createSkeletonCyber(txContext, denom);
+function createDelegate(txContext, validatorBech32, amount, denom) {
+  const txSkeleton = createSkeleton(txContext, denom);
 
   const txMsg = {
     type: 'cosmos-sdk/MsgDelegate',
@@ -431,13 +449,12 @@ function createDelegate(txContext, validatorBech32, amount, denom, memo) {
   };
 
   txSkeleton.value.msg = [txMsg];
-  txSkeleton.value.memo = memo || '';
 
   return txSkeleton;
 }
 
-function createRedelegate(txContext, validatorSourceBech32, validatorDestBech32, amount, denom, memo) {
-  const txSkeleton = createSkeletonCyber(txContext, denom);
+function createRedelegate(txContext, validatorSourceBech32, validatorDestBech32, amount, denom) {
+  const txSkeleton = createSkeleton(txContext, denom);
 
   const txMsg = {
     type: 'cosmos-sdk/MsgBeginRedelegate',
@@ -453,13 +470,12 @@ function createRedelegate(txContext, validatorSourceBech32, validatorDestBech32,
   };
 
   txSkeleton.value.msg = [txMsg];
-  txSkeleton.value.memo = memo || '';
 
   return txSkeleton;
 }
 
-function createUndelegate(txContext, validatorBech32, amount, denom, memo) {
-  const txSkeleton = createSkeletonCyber(txContext, denom);
+function createUndelegate(txContext, validatorBech32, amount, denom) {
+  const txSkeleton = createSkeleton(txContext, denom);
 
   const txMsg = {
     type: 'cosmos-sdk/MsgUndelegate',
@@ -474,13 +490,12 @@ function createUndelegate(txContext, validatorBech32, amount, denom, memo) {
   };
 
   txSkeleton.value.msg = [txMsg];
-  txSkeleton.value.memo = memo || '';
 
   return txSkeleton;
 }
 
-function createWithdrawDelegationReward(txContext, rewards, denom, memo) {
-  const txSkeleton = createSkeletonCyber(txContext, denom);
+function createWithdrawDelegationReward(txContext, rewards, denom) {
+  const txSkeleton = createSkeleton(txContext, denom);
   txSkeleton.value.msg = [];
 
   Object.keys(rewards).forEach(key => {
@@ -493,13 +508,11 @@ function createWithdrawDelegationReward(txContext, rewards, denom, memo) {
     });
   });
 
-  txSkeleton.value.memo = memo || '';
-
   return txSkeleton;
 }
 
-function createTextProposal(txContext, title, description, deposit, denom, memo) {
-  const txSkeleton = createSkeletonCyber(txContext, denom);
+function createTextProposal(txContext, title, description, deposit, denom) {
+  const txSkeleton = createSkeleton(txContext, denom);
 
   const txMsg = {
     type: 'cosmos-sdk/MsgSubmitProposal',
@@ -520,13 +533,12 @@ function createTextProposal(txContext, title, description, deposit, denom, memo)
   };
 
   txSkeleton.value.msg = [txMsg];
-  txSkeleton.value.memo = memo || '';
 
   return txSkeleton;
 }
 
-function createCommunityPoolSpendProposal(txContext, title, description, recipient, deposit, amount, denom, memo) {
-  const txSkeleton = createSkeletonCyber(txContext, denom);
+function createCommunityPoolSpendProposal(txContext, title, description, recipient, deposit, amount, denom) {
+  const txSkeleton = createSkeleton(txContext, denom);
 
   const txMsg = {
     type: 'cosmos-sdk/MsgSubmitProposal',
@@ -552,13 +564,12 @@ function createCommunityPoolSpendProposal(txContext, title, description, recipie
   };
 
   txSkeleton.value.msg = [txMsg];
-  txSkeleton.value.memo = memo || '';
 
   return txSkeleton;
 }
 
-function createParamsChangeProposal(txContext, title, description, changes, deposit, denom, memo) {
-  const txSkeleton = createSkeletonCyber(txContext, denom);
+function createParamsChangeProposal(txContext, title, description, changes, deposit, denom) {
+  const txSkeleton = createSkeleton(txContext, denom);
 
   const txMsg = {
     type: 'cosmos-sdk/MsgSubmitProposal',
@@ -580,13 +591,12 @@ function createParamsChangeProposal(txContext, title, description, changes, depo
   };
 
   txSkeleton.value.msg = [txMsg];
-  txSkeleton.value.memo = memo || '';
 
   return txSkeleton;
 }
 
-function createDeposit(txContext, proposalId, amount, denom, memo) {
-  const txSkeleton = createSkeletonCyber(txContext, denom);
+function createDeposit(txContext, proposalId, amount, denom) {
+  const txSkeleton = createSkeleton(txContext, denom);
 
   const txMsg = {
     type: 'cosmos-sdk/MsgDeposit',
@@ -601,13 +611,12 @@ function createDeposit(txContext, proposalId, amount, denom, memo) {
   };
 
   txSkeleton.value.msg = [txMsg];
-  txSkeleton.value.memo = memo || '';
 
   return txSkeleton;
 }
 
-function createVote(txContext, proposalId, option, denom, memo) {
-  const txSkeleton = createSkeletonCyber(txContext, denom);
+function createVote(txContext, proposalId, option, denom) {
+  const txSkeleton = createSkeleton(txContext, denom);
 
   const txMsg = {
     type: 'cosmos-sdk/MsgVote',
@@ -619,7 +628,6 @@ function createVote(txContext, proposalId, option, denom, memo) {
   };
 
   txSkeleton.value.msg = [txMsg];
-  txSkeleton.value.memo = memo || '';
 
   return txSkeleton;
 }
@@ -628,28 +636,29 @@ function createVote(txContext, proposalId, option, denom, memo) {
 
 async function createCyberlinkTx (objectFrom, objectTo) {
   const txContext = await createTxContext()
+  const currentPluginState = wallet.getPluginState()
 
   const tx = await createCyberlink(
     txContext,
     objectFrom,
     objectTo,
-    MEMO
+    currentPluginState.denom
   );
 
   const signedTx = await sign(tx, txContext);
-  // return await txSubmit(signedTx)
-  return signedTx
+  return await txSubmit(signedTx)
+  // return signedTx
 };
 
 async function createSendTx(subjectTo, amount) {
   const txContext = await createTxContext()
+  const currentPluginState = wallet.getPluginState()
 
   const tx = await createSend(
     txContext,
     subjectTo,
     amount,
-    DENOM_CYBER,
-    MEMO
+    currentPluginState.denom
   );
   
   const signedTx = await sign(tx, txContext);
@@ -659,13 +668,13 @@ async function createSendTx(subjectTo, amount) {
 
 async function createMultiSendTx(inputs, outputs) {
   const txContext = await createTxContext()
+  const currentPluginState = wallet.getPluginState()
 
   const tx = await createMultiSend(
     txContext,
     JSON.parse(inputs),
     JSON.parse(outputs),
-    DENOM_CYBER,
-    MEMO
+    currentPluginState.denom
   );
   
   const signedTx = await sign(tx, txContext);
@@ -675,13 +684,13 @@ async function createMultiSendTx(inputs, outputs) {
 
 async function createDelegateTx(validatorTo, amount) {
   const txContext = await createTxContext()
+  const currentPluginState = wallet.getPluginState()
 
   const tx = await createDelegate(
     txContext,
     validatorTo,
     amount,
-    DENOM_CYBER,
-    MEMO
+    currentPluginState.denom
   );
   
   const signedTx = await sign(tx, txContext);
@@ -691,14 +700,14 @@ async function createDelegateTx(validatorTo, amount) {
 
 async function  createRedelegateTx(validatorFrom, validatorTo, amount) {
   const txContext = await createTxContext()
+  const currentPluginState = wallet.getPluginState()
 
   const tx = await createRedelegate(
     txContext,
     validatorFrom,
     validatorTo,
     amount,
-    DENOM_CYBER,
-    MEMO
+    currentPluginState.denom
   );
   
   const signedTx = await sign(tx, txContext);
@@ -708,13 +717,13 @@ async function  createRedelegateTx(validatorFrom, validatorTo, amount) {
 
 async function createUndelegateTx(validatorFrom, amount) {
   const txContext = await createTxContext()
+  const currentPluginState = wallet.getPluginState()
 
   const tx = await createUndelegate(
     txContext,
     validatorFrom,
     amount,
-    DENOM_CYBER,
-    MEMO
+    currentPluginState.denom
   );
   
   const signedTx = await sign(tx, txContext);
@@ -724,12 +733,12 @@ async function createUndelegateTx(validatorFrom, amount) {
 
 async function createWithdrawDelegationRewardTx(rewards) {
   const txContext = await createTxContext()
+  const currentPluginState = wallet.getPluginState()
 
   const tx = await createWithdrawDelegationReward(
     txContext,
     JSON.parse(rewards),
-    DENOM_CYBER,
-    MEMO
+    currentPluginState.denom
   );
   
   const signedTx = await sign(tx, txContext);
@@ -739,14 +748,14 @@ async function createWithdrawDelegationRewardTx(rewards) {
 
 async function createTextProposalTx(title, description, deposit) {
   const txContext = await createTxContext()
+  const currentPluginState = wallet.getPluginState()
 
   const tx = await createTextProposal(
     txContext,
     title,
     description,
     deposit,
-    DENOM_CYBER,
-    MEMO
+    currentPluginState.denom
   );
   
   const signedTx = await sign(tx, txContext);
@@ -756,6 +765,7 @@ async function createTextProposalTx(title, description, deposit) {
 
 async function createCommunityPoolSpendProposalTx(title, description, recipient, deposit, amount) {
   const txContext = await createTxContext()
+  const currentPluginState = wallet.getPluginState()
 
   const tx = await createCommunityPoolSpendProposal(
     txContext,
@@ -764,8 +774,7 @@ async function createCommunityPoolSpendProposalTx(title, description, recipient,
     recipient,
     deposit,
     amount,
-    DENOM_CYBER,
-    MEMO
+    currentPluginState.denom
   );
   
   const signedTx = await sign(tx, txContext);
@@ -775,6 +784,7 @@ async function createCommunityPoolSpendProposalTx(title, description, recipient,
 
 async function createParamsChangeProposalTx(title, description, changes, deposit) {
   const txContext = await createTxContext()
+  const currentPluginState = wallet.getPluginState()
 
   const tx = await createParamsChangeProposal(
     txContext,
@@ -782,8 +792,7 @@ async function createParamsChangeProposalTx(title, description, changes, deposit
     description,
     JSON.parse(changes),
     deposit,
-    DENOM_CYBER,
-    MEMO
+    currentPluginState.denom
   );
   
   const signedTx = await sign(tx, txContext);
@@ -793,13 +802,13 @@ async function createParamsChangeProposalTx(title, description, changes, deposit
 
 async function createDepositTx(proposalId, amount) {
   const txContext = await createTxContext()
+  const currentPluginState = wallet.getPluginState()
 
   const tx = await createDeposit(
     txContext,
     proposalId,
     amount,
-    DENOM_CYBER,
-    MEMO
+    currentPluginState.denom
   );
   
   const signedTx = await sign(tx, txContext);
@@ -809,13 +818,13 @@ async function createDepositTx(proposalId, amount) {
 
 async function createVoteTx(proposalId, option) {
   const txContext = await createTxContext()
+  const currentPluginState = wallet.getPluginState()
 
   const tx = await createVote(
     txContext,
     proposalId,
     option,
-    DENOM_CYBER,
-    MEMO
+    currentPluginState.denom
   );
   
   const signedTx = await sign(tx, txContext);
@@ -830,7 +839,8 @@ async function txSubmit(signedTx) {
     tx: signedTx.value,
     mode: 'sync',
   };
-  const url = `${CYBER_NODE_URL}/${LCD_PATH}/txs`;
+  const currentPluginState = wallet.getPluginState()
+  const url = `${currentPluginState.nodeUrl}/lcd/txs`;
   const response = await fetch(url, {
     method: 'POST',
     headers: {

@@ -3,27 +3,27 @@
 <html>
 
   </head>
-    <title>cyb-virus Snap</title>
+    <title>cyb snap</title>
   </head>
 
   <body>
-    <h1>cyb-virus snap PoC</h1>
-    <details>
-      <summary>Features</summary>
-      <ul>
-        <li>1. Get your account info </li>
-        <li>2. Get your bandwidth </li>
-        <li>2. Get network status </li>
-        <li>3. Create cyberlink </li>
-        <li>4. Send tokens </li>
-      </ul>
-    </details>
-    <br/>
+    <h1>cyb snap</h1>
 
     <button class="connect">Connect</button>
     <p>
       <button class="account">Get Account</button>
       <span class="addAccount"></span>
+    </p>
+
+    <p>
+      <input class="config_node_url" placeholder="from" value="https://devnet.cybernode.ai" />
+      <input class="config_denom" placeholder="from" value="eul" />
+      <input class="config_prefix" placeholder="from" value="cyber" />
+      <input class="config_memo" placeholder="from" value="sent from metamask's cyb snap!" />
+      <input class="config_gas" placeholder="from" value=200000 />
+      <button class="snapState">Get Snap State</button>
+      <button class="setConfig">Set Config</button>
+      <span class="addSnapState"></span>
     </p>
 
     <p>
@@ -147,6 +147,10 @@
 
     const snapId = new URL('package.json', window.location.href).toString()
 
+    const addSnapState = document.querySelector('span.addSnapState')
+    const snapStateButton = document.querySelector('button.snapState')
+    const setConfigButton = document.querySelector('button.setConfig')
+
     const connectButton = document.querySelector('button.connect')
 
     const addAccount = document.querySelector('span.addAccount')
@@ -207,6 +211,9 @@
 
     connectButton.addEventListener('click', connect)
     
+    snapStateButton.addEventListener('click', getSnapState)
+    setConfigButton.addEventListener('click', setConfig)
+
     accountButton.addEventListener('click', getAccount)
     accountInfoButton.addEventListener('click', getAccountInfo)
     statusButton.addEventListener('click', getStatus)
@@ -242,6 +249,43 @@
     }
 
     //----------------------------------------------------------
+
+    async function getSnapState () {
+      try {
+        const response = await ethereum.send({
+          method: 'wallet_invokePlugin',
+          params: [snapId, {
+            method: 'getSnapState'
+          }]
+        })
+        addSnapState.innerText = JSON.stringify(response)
+      } catch (err) {
+        console.error(err)
+        addSnapState.innerText = `Problem happened: ' ${JSON.stringify(err)}`
+      }
+    }
+
+    async function setConfig () {
+      try {
+        let data = {}
+        data['nodeUrl'] = document.querySelector('.config_node_url').value
+        data['denom'] = document.querySelector('.config_denom').value
+        data['prefix'] = document.querySelector('.config_prefix').value
+        data['memo'] = document.querySelector('.config_memo').value
+        data['gas'] = document.querySelector('.config_gas').value
+        const response = await ethereum.send({
+          method: 'wallet_invokePlugin',
+          params: [snapId, {
+            method: 'setConfig',
+            params: [data]
+          }]
+        })
+        addSnapState.innerText = JSON.stringify(response)
+      } catch (err) {
+        console.error(err)
+        addSnapState.innerText = `Problem happened: ' ${JSON.stringify(err)}`
+      }
+    }
 
     async function getAccount () {
       try {
@@ -327,6 +371,7 @@
           }]
         })
         addRewards.innerText = JSON.stringify(response)
+        document.querySelector('.withdraw_delegation_rewards').value = JSON.stringify(response)
       } catch (err) {
         console.error(err)
         addRewards.innerText = `Problem happened: ' ${JSON.stringify(err)}`
