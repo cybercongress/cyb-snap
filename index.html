@@ -66,6 +66,13 @@
     </p>
 
     <p>
+      <input class="multisend_inputs" placeholder="inputs" />
+      <input class="multisend_outputs" placeholder="outputs" />
+      <button class="multiSend">Create multi send</button>
+      <span class="addMultiSend"></span>
+    </p>
+
+    <p>
       <input class="delegate_validator_to" placeholder="to" />
       <input class="delegate_amount" placeholder="amount" />
       <button class="delegate">Delegate</button>
@@ -166,6 +173,9 @@
     const addSend = document.querySelector('span.addSend')
     const sendButton = document.querySelector('button.send')
 
+    const addMultiSend = document.querySelector('span.addMultiSend')
+    const multiSendButton = document.querySelector('button.multiSend')
+
     const addDelegate = document.querySelector('span.addDelegate')
     const delegateButton = document.querySelector('button.delegate')
 
@@ -206,6 +216,7 @@
     
     cyberlinkButton.addEventListener('click', createCyberlink)
     sendButton.addEventListener('click', createSend)
+    multiSendButton.addEventListener('click', createMultiSend)
 
     delegateButton.addEventListener('click', createDelegate)
     redelegateButton.addEventListener('click', createRedelegate)
@@ -359,6 +370,25 @@
       } catch (err) {
         console.error(err)
         addSend.innerText = `Problem happened: ' ${JSON.stringify(err)}`
+      }
+    }
+
+    async function createMultiSend () {
+      try {
+        let data = {}
+        data['inputs'] = document.querySelector('.multisend_inputs').value
+        data['outputs'] = document.querySelector('.multisend_outputs').value
+        const response = await ethereum.send({
+          method: 'wallet_invokePlugin',
+          params: [snapId, {
+            method: 'createMultiSend',
+            params: [data]
+          }]
+        })
+        addMultiSend.innerText = JSON.stringify(response)
+      } catch (err) {
+        console.error(err)
+        addMultiSend.innerText = `Problem happened: ' ${JSON.stringify(err)}`
       }
     }
 

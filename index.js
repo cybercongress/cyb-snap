@@ -53,7 +53,11 @@ wallet.registerRpcMessageHandler(async (_originString, requestObject) => {
         sendData['amount']
       )
     case 'createMultiSend':
-      throw rpcErrors.methodNotFound(requestObject)
+      let multiSendData = requestObject.params[0]
+      return await createMultiSendTx(
+        multiSendData['inputs'],
+        multiSendData['outputs']
+      )
     case 'createDelegate':
       let delegateData = requestObject.params[0]
       return await createDelegateTx(
@@ -394,6 +398,23 @@ function createSend(txContext, recipient, amount, denom, memo) {
   return txSkeleton;
 }
 
+function createMultiSend(txContext, inputs, outputs, denom, memo) {
+  const txSkeleton = createSkeletonCyber(txContext, denom);
+
+  const txMsg = {
+    type: 'cosmos-sdk/MsgMultiSend',
+    value: {
+      inputs: inputs,
+      outputs: outputs,
+    },
+  };
+
+  txSkeleton.value.msg = [txMsg];
+  txSkeleton.value.memo = memo || '';
+
+  return txSkeleton;
+}
+
 function createDelegate(txContext, validatorBech32, amount, denom, memo) {
   const txSkeleton = createSkeletonCyber(txContext, denom);
 
@@ -627,6 +648,22 @@ async function createSendTx(subjectTo, amount) {
     txContext,
     subjectTo,
     amount,
+    DENOM_CYBER,
+    MEMO
+  );
+  
+  const signedTx = await sign(tx, txContext);
+  return txSubmit(signedTx)
+  // return signedTx
+};
+
+async function createMultiSendTx(inputs, outputs) {
+  const txContext = await createTxContext()
+
+  const tx = await createMultiSend(
+    txContext,
+    JSON.parse(inputs),
+    JSON.parse(outputs),
     DENOM_CYBER,
     MEMO
   );
