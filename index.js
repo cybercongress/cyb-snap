@@ -1,9 +1,6 @@
 const { errors: rpcErrors } = require('eth-json-rpc-errors')
 
-// TODO use only one of those
-const secp256k1 = require('noble-secp256k1') 
 const Secp256k1 = require('secp256k1');
-
 const bech32 = require('bech32')
 const Sha256 = require('sha256');
 const RIPEMD160 = require('ripemd160');
@@ -140,7 +137,8 @@ wallet.registerRpcMessageHandler(async (_originString, requestObject) => {
 
 async function getPubKey () {
   const PRIV_KEY = await wallet.getAppKey()
-  return secp256k1.getPublicKey(PRIV_KEY, true)
+  const prikeyArr = new Uint8Array(hexToBytes(PRIV_KEY));
+  return bytesToHex(Secp256k1.publicKeyCreate(prikeyArr, true))
 }
 
 function getAccount (pubkey) {
@@ -174,6 +172,16 @@ function toBech32(prefix, str) {
   const strByte = bech32.toWords(Buffer.from(str, 'hex'));
 
   return bech32.encode(prefix, strByte);
+}
+
+function bytesToHex(bytes) {
+  const hex = [];
+
+  for (let i = 0; i < bytes.length; i++) {
+      hex.push((bytes[i] >>> 4).toString(16));
+      hex.push((bytes[i] & 0xF).toString(16));
+  }
+  return hex.join('').toUpperCase();
 }
 
 //----------------------------------------------------------
@@ -860,11 +868,6 @@ async function txSubmit(signedTx) {
 async function sign(unsignedTx, txContext) {
   const bytesToSign = getBytesToSign(unsignedTx, txContext);
   const PRIV_KEY = await wallet.getAppKey()
-
-  // TODO research why secp256k1 produce wrong sig
-  // const sig = secp256k1.sign(hash, PRIV_KEY, {recovered: false, canonical: true})
-  // const compPubKey = secp256k1.getPublicKey(PRIV_KEY, true)
-  // const check = secp256k1.verify(sig, hash, compPubKey) // true!
   
   const hash = new Uint8Array(Sha256(Buffer.from(bytesToSign), {
     asBytes: true 
@@ -942,7 +945,6 @@ function applySignature(unsignedTx, txContext, secp256k1Sig) {
   tmpCopy.value.signatures = [
     {
       signature: Buffer.from(secp256k1Sig).toString('base64'),
-      // signature: Buffer.from(hexToBytes(secp256k1Sig)).toString('base64'),
       account_number: txContext.accountNumber.toString(),
       sequence: txContext.sequence.toString(),
       pub_key: {
