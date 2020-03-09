@@ -10,7 +10,7 @@ wallet.updatePluginState({
   denom: "eul",
   prefix: "cyber",
   memo: "sent from metamask's cyb snap!",
-  gas: 200000,
+  gas: 0,
   version: "1.0.0"
 })
 
