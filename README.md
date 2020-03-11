@@ -1,6 +1,6 @@
 ## cyb snap
 
-**Yes, you can use Metamask to communicate and create transaction in cosmos-sdk based chains.**
+**Yes, you can use Metamask to communicate and create transactions in cosmos-sdk based chains.**
 
 ### About
 
@@ -12,11 +12,11 @@ cyb snap allows you to create cyberlinks + send tokens, and perform staking, dis
 
 cyb snap going to be integrated to [cyber.page](https://cyber.page) soon, follow dot-cyber [release board](https://github.com/cybercongress/dot-cyber/projects/5)
 
-PS: as cyber based on cosmos-SDK that's the first case of using Metamask and Snaps to work with the non-Ethereum chain and using different cryptography.
+PS: as cyber based on cosmos-SDK it is the first case of using Metamask and Snaps to work with the non-Ethereum chain and to use different cryptography.
 
 ### Security
 
-Metamask's plugin system or snaps' main core features are the advanced keys system and permissions-based access to extended API. It generates unique private keys for a given snap from your core mnemonic and snap origin url. Snap works using specially generated for their domain keys, contract accounts.
+Metamask plugin system or snaps main core features are the advanced keys system and permissions-based access to extended API. It generates unique private keys for a given snap from your core mnemonic and snap origin URL. Snap works using specially generated for their domain keys, contract accounts.
 
 ### Prepare
 First, you need to install [MetaMask Snaps Beta](https://github.com/MetaMask/metamask-snaps-beta). Read the [Wiki](https://github.com/MetaMask/metamask-snaps-beta/wiki).
@@ -37,16 +37,16 @@ mm-snap serve
 
 Open localhost:8084 and press connect. Metamask will ask you to add snap and provide needed to snap permissions. 
 
-Note to devs: mm-snap serve will update your front-side but to update snap's bundle code and you need to build bundle after changes, remove plugin and permissions from metamask and install them again pressing connect.
+Note to devs: mm-snap serve will update your front-side but to update snap's bundle code, and you need to build bundle after changes, remove plugin and permissions from metamask and install them again pressing connect.
 
 ### Status
-For developers and hightly motivated users from metamask/cyber/cosmos community.
+For developers and highly motivated users from metamask/cyber/cosmos community.
 
 - All end-user msgs support
 - Build/sign txs
 - Node API/LCD calls
-- State managment for multiple chain support
-- Basic frontend as playground
+- State management for multiple chain support
+- Basic frontend as a playground
 
 ### Implemented messages
 #### Link
